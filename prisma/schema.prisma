@@ -1,0 +1,310 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  lastLoginAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  organizations OrganizationUser[]
+
+  @@index([email])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  plan      PlanType @default(free)
+  isActive  Boolean  @default(true)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  users     OrganizationUser[]
+
+  @@index([isActive])
+}
+
+model OrganizationUser {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           UserRole
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, isActive])
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  organizationId String
+  name          String
+  description   String?  @db.Text
+  basePrice     Decimal  @db.Decimal(10, 2)
+  sku           String
+  imageUrl      String?
+  isActive      Boolean  @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([organizationId, sku])
+  @@index([organizationId, isActive])
+  @@index([sku])
+}
+
+model ProductVariant {
+  id            String   @id @default(cuid())
+  productId     String
+  organizationId String
+  name          String
+  sku           String
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0)
+  isActive      Boolean  @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([organizationId, sku])
+  @@index([productId])
+  @@index([organizationId, isActive])
+}
+
+model StockMovement {
+  id              String   @id @default(cuid())
+  productVariantId String
+  organizationId   String
+  type            StockMovementType
+  quantity        Int
+  referenceType   String?
+  referenceId     String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([productVariantId])
+  @@index([organizationId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  username       String?
+  contact        String?
+  notes          String?  @db.Text
+  lastPurchaseAt DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([username])
+  @@index([organizationId, lastPurchaseAt])
+}
+
+model Livestream {
+  id               String   @id @default(cuid())
+  organizationId   String
+  title            String
+  platform         Platform
+  viewerCount      Int?
+  totalSalesAmount Decimal? @db.Decimal(10, 2)
+  startedAt        DateTime
+  endedAt          DateTime?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId, startedAt])
+  @@index([createdBy])
+}
+
+model Sale {
+  id             String   @id @default(cuid())
+  organizationId String
+  livestreamId   String?
+  customerId     String
+  sellerId       String
+  status         SaleStatus @default(reserved)
+  totalAmount    Decimal  @db.Decimal(10, 2)
+  discountAmount Decimal  @db.Decimal(10, 2) @default(0)
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([livestreamId])
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id              String   @id @default(cuid())
+  saleId          String
+  productId       String
+  productVariantId String
+  quantity        Int
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  totalPrice      Decimal  @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productVariantId])
+}
+
+model Payment {
+  id             String         @id @default(cuid())
+  saleId         String
+  method         PaymentMethod
+  amount         Decimal        @db.Decimal(10, 2)
+  status         PaymentStatus  @default(pending)
+  reference      String?
+  paidAt         DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([saleId])
+  @@index([status])
+}
+
+model Shipment {
+  id             String         @id @default(cuid())
+  saleId         String         @unique
+  type           ShipmentType
+  status         ShipmentStatus @default(pending)
+  address        String?        @db.Text
+  trackingCode   String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status])
+  @@index([saleId])
+}
+
+model ActivityLog {
+  id           String   @id @default(cuid())
+  organizationId String
+  userId       String?
+  entityType   String
+  entityId     String
+  action       String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([organizationId, entityType, entityId])
+  @@index([createdAt])
+}
+
+model MessageTemplate {
+  id             String         @id @default(cuid())
+  organizationId String
+  type           MessageType
+  content        String         @db.Text
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([organizationId, type])
+  @@index([organizationId, isActive])
+}
+
+model MessageLog {
+  id          String   @id @default(cuid())
+  customerId  String
+  saleId      String?
+  channel     String
+  content     String   @db.Text
+  status      String   @default("sent")
+  sentAt      DateTime @default(now())
+
+  @@index([customerId])
+  @@index([saleId])
+  @@index([sentAt])
+}
+
+enum PlanType {
+  free
+  pro
+  brand
+}
+
+enum UserRole {
+  owner
+  seller
+  moderator
+  logistics
+}
+
+enum Platform {
+  instagram
+  tiktok
+  youtube
+  other
+}
+
+enum SaleStatus {
+  reserved
+  confirmed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+enum PaymentMethod {
+  transfer
+  cash
+  mercadopago
+  paypal
+}
+
+enum ShipmentStatus {
+  pending
+  preparing
+  shipped
+  delivered
+}
+
+enum ShipmentType {
+  delivery
+  pickup
+}
+
+enum StockMovementType {
+  reserve
+  sale
+  cancel
+  adjustment
+  return
+}
+
+enum MessageType {
+  order_confirmed
+  payment_reminder
+  shipped
+  custom
+}
