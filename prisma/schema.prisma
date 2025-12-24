@@ -254,6 +254,8 @@ enum UserRole {
   seller
   moderator
   logistics
+  admin
+  superadmin
 }
 
 enum Platform {

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { SalesController } from './sales.controller';
-import { authMiddleware, organizationContextMiddleware } from '../../middlewares';
+import { authMiddleware, organizationContextMiddleware } from '../auth/auth.middleware';
 
 const router = Router();
 const salesController = new SalesController();

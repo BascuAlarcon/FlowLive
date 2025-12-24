@@ -1,4 +1,4 @@
-import { prisma } from '../../config/prisma';
+import prisma from '../../config/prisma';
 
 export class SalesService {
   async createSale(data: any, organizationId: string) {
@@ -24,14 +24,14 @@ export class SalesService {
 
   async updateSale(id: string, data: any, organizationId: string) {
     return prisma.sale.update({
-      where: { id_organizationId: { id, organizationId } },
+      where: { id },
       data,
     });
   }
 
   async deleteSale(id: string, organizationId: string) {
     return prisma.sale.delete({
-      where: { id_organizationId: { id, organizationId } },
+      where: { id },
     });
   }
 }
