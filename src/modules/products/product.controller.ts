@@ -15,7 +15,11 @@ export class ProductController {
   async getProducts(req: CustomRequest, res: Response, next: NextFunction) {
     try {
       const organizationId = req.organizationId || '';
-      const products = await productService.getProducts(organizationId);
+      const filters = {
+        categoryId: req.query.categoryId as string | undefined,
+        isActive: req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined,
+      };
+      const products = await productService.getProducts(organizationId, filters);
       res.json({
         success: true,
         data: products,

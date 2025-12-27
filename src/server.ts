@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes';
 import organizationRoutes from './modules/organizations/organizations.routes';
 import userRoutes from './modules/users/users.routes';
+import routes from './routes';
 import { errorHandler } from './middlewares/error-handler.middleware';
 
 dotenv.config();
@@ -34,12 +35,22 @@ app.use('/api/auth', authRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/users', userRoutes);
 
+// Rutas centralizadas (productos, colores, sizes, customers, livestreams, sales, carts, metrics)
+app.use('/api', routes);
+
 // Middleware de manejo de errores (debe ir al final)
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`� API Auth: http://localhost:${PORT}/api/auth`);
-  console.log(`�📚 API Organizations: http://localhost:${PORT}/api/organizations`);
+  console.log(`🔐 API Auth: http://localhost:${PORT}/api/auth`);
+  console.log(`📚 API Organizations: http://localhost:${PORT}/api/organizations`);
   console.log(`👥 API Users: http://localhost:${PORT}/api/users`);
+  console.log(`📦 API Products: http://localhost:${PORT}/api/products`);
+  console.log(`🎨 API Colors: http://localhost:${PORT}/api/colors`);
+  console.log(`📏 API Sizes: http://localhost:${PORT}/api/sizes`);
+  console.log(`👤 API Customers: http://localhost:${PORT}/api/customers`);
+  console.log(`🔴 API Livestreams: http://localhost:${PORT}/api/livestreams`);
+  console.log(`🛒 API Carts: http://localhost:${PORT}/api/carts`);
+  console.log(`📊 API Metrics: http://localhost:${PORT}/api/metrics`);
 });
