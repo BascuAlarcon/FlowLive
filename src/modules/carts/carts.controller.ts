@@ -1,17 +1,11 @@
 import { Request, Response } from 'express';
 import { CartsService } from './carts.service';
-import {
-  validateAddItemToCart,
-  validateUpdateCartItem,
-  validateUpdateCart,
-  validateConfirmCart,
-  validateGetActiveCartsQuery,
-} from './carts.validation';
 
 const cartsService = new CartsService();
 
 interface RequestWithOrganization extends Request {
   organizationId?: string;
+  userId?: string;
 }
 
 export class CartsController {
@@ -20,13 +14,12 @@ export class CartsController {
    */
   async getActiveCarts(req: RequestWithOrganization, res: Response) {
     try {
-      const filters = validateGetActiveCartsQuery(req.query);
+      const { customerId, livestreamId, sellerId } = req.query;
       
       const carts = await cartsService.getActiveCarts(req.organizationId!, {
-        customerId: filters.customerId,
-        livestreamId: filters.livestreamId,
-        hasNoLivestream: filters.hasNoLivestream,
-        sellerId: filters.sellerId,
+        customerId: customerId as string,
+        livestreamId: livestreamId as string,
+        sellerId: sellerId as string,
       });
 
       res.status(200).json(carts);
@@ -36,14 +29,17 @@ export class CartsController {
   }
 
   /**
-   * GET /carts/:id - Obtener un carrito específico
+   * GET /carts/customer/:customerId - Obtener carrito de un cliente
    */
-  async getCartById(req: RequestWithOrganization, res: Response) {
+  async getCustomerCart(req: RequestWithOrganization, res: Response) {
     try {
-      const cart = await cartsService.getCartById(req.params.id, req.organizationId!);
-      
+      const cart = await cartsService.getCustomerCart(
+        req.params.customerId,
+        req.organizationId!
+      );
+
       if (!cart) {
-        return res.status(404).json({ error: 'Carrito no encontrado o ya está cerrado' });
+        return res.status(404).json({ error: 'El cliente no tiene carrito activo' });
       }
 
       res.status(200).json(cart);
@@ -53,16 +49,25 @@ export class CartsController {
   }
 
   /**
-   * POST /carts/:id/items - Agregar item al carrito
+   * POST /carts/items - Agregar item al carrito del cliente
    */
   async addItemToCart(req: RequestWithOrganization, res: Response) {
     try {
-      const itemData = validateAddItemToCart(req.body);
-      
+      const { customerId, liveItemId, quantity, livestreamId } = req.body;
+
+      if (!customerId || !liveItemId || !quantity) {
+        return res.status(400).json({ 
+          error: 'customerId, liveItemId y quantity son requeridos' 
+        });
+      }
+
       const item = await cartsService.addItemToCart(
-        req.params.id,
+        customerId,
         req.organizationId!,
-        itemData
+        req.userId!, // sellerId
+        liveItemId,
+        Number(quantity),
+        livestreamId
       );
 
       res.status(201).json(item);
@@ -72,32 +77,12 @@ export class CartsController {
   }
 
   /**
-   * PATCH /carts/:id/items/:itemId - Actualizar item del carrito
+   * DELETE /carts/:cartId/items/:itemId - Eliminar item del carrito
    */
-  async updateCartItem(req: RequestWithOrganization, res: Response) {
+  async removeItemFromCart(req: RequestWithOrganization, res: Response) {
     try {
-      const updateData = validateUpdateCartItem(req.body);
-      
-      const updatedItem = await cartsService.updateCartItem(
-        req.params.id,
-        req.params.itemId,
-        req.organizationId!,
-        updateData
-      );
-
-      res.status(200).json(updatedItem);
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
-    }
-  }
-
-  /**
-   * DELETE /carts/:id/items/:itemId - Eliminar item del carrito
-   */
-  async removeCartItem(req: RequestWithOrganization, res: Response) {
-    try {
-      const result = await cartsService.removeCartItem(
-        req.params.id,
+      const result = await cartsService.removeItemFromCart(
+        req.params.cartId,
         req.params.itemId,
         req.organizationId!
       );
@@ -109,71 +94,36 @@ export class CartsController {
   }
 
   /**
-   * PATCH /carts/:id - Actualizar carrito (notas, descuento, livestream)
-   */
-  async updateCart(req: RequestWithOrganization, res: Response) {
-    try {
-      const updateData = validateUpdateCart(req.body);
-      
-      const updatedCart = await cartsService.updateCart(
-        req.params.id,
-        req.organizationId!,
-        updateData
-      );
-
-      res.status(200).json(updatedCart);
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
-    }
-  }
-
-  /**
-   * POST /carts/:id/confirm - Confirmar carrito (convertir en venta confirmada)
+   * POST /carts/:cartId/confirm - Confirmar carrito (cerrar venta)
    */
   async confirmCart(req: RequestWithOrganization, res: Response) {
     try {
-      const paymentData = validateConfirmCart(req.body);
-      
-      const confirmedSale = await cartsService.confirmCart(
-        req.params.id,
-        req.organizationId!,
-        paymentData
-      );
-
-      res.status(200).json(confirmedSale);
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
-    }
-  }
-
-  /**
-   * POST /carts/:id/cancel - Cancelar carrito
-   */
-  async cancelCart(req: RequestWithOrganization, res: Response) {
-    try {
-      const cancelledCart = await cartsService.cancelCart(
-        req.params.id,
+      const cart = await cartsService.confirmCart(
+        req.params.cartId,
         req.organizationId!
       );
 
-      res.status(200).json(cancelledCart);
+      res.status(200).json(cart);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
     }
   }
 
   /**
-   * GET /carts/old - Obtener carritos antiguos
+   * POST /carts/:cartId/cancel - Cancelar carrito (liberar items)
    */
-  async getOldCarts(req: RequestWithOrganization, res: Response) {
+  async cancelCart(req: RequestWithOrganization, res: Response) {
     try {
-      const daysOld = req.query.daysOld ? parseInt(req.query.daysOld as string) : 7;
-      
-      const oldCarts = await cartsService.getOldCarts(req.organizationId!, daysOld);
+      const cart = await cartsService.cancelCart(
+        req.params.cartId,
+        req.organizationId!
+      );
 
-      res.status(200).json(oldCarts);
+      res.status(200).json(cart);
     } catch (error) {
       res.status(400).json({ error: (error as Error).message });
     }
   }
 }
+
+export default new CartsController();

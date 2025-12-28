@@ -6,7 +6,7 @@ export class LivestreamsService {
     const activeLive = await prisma.livestream.findFirst({
       where: {
         organizationId,
-        status: 'active',
+        endedAt: null,
       },
     });
 
@@ -20,7 +20,6 @@ export class LivestreamsService {
         organizationId,
         createdBy: userId,
         startedAt: new Date(),
-        status: 'active',
       },
     });
   }
@@ -32,8 +31,11 @@ export class LivestreamsService {
   ) {
     const where: any = { organizationId };
 
-    if (status) {
-      where.status = status;
+    // Filtrar por status usando endedAt
+    if (status === 'active') {
+      where.endedAt = null;
+    } else if (status === 'closed') {
+      where.endedAt = { not: null };
     }
 
     if (platform) {
@@ -51,7 +53,7 @@ export class LivestreamsService {
     return await prisma.livestream.findFirst({
       where: {
         organizationId,
-        status: 'active',
+        endedAt: null,
       },
       orderBy: { startedAt: 'desc' },
     });
@@ -77,7 +79,7 @@ export class LivestreamsService {
       where: { id },
     });
 
-    if (livestream?.status === 'closed') {
+    if (livestream?.endedAt !== null) {
       throw new Error('No se puede actualizar un livestream cerrado');
     }
 
@@ -93,7 +95,7 @@ export class LivestreamsService {
   async closeLivestream(id: string, organizationId: string, viewerCount?: number) {
     const livestream = await this.getLivestreamById(id, organizationId);
 
-    if (livestream.status === 'closed') {
+    if (livestream.endedAt !== null) {
       throw new Error('El livestream ya está cerrado');
     }
 
@@ -122,10 +124,8 @@ export class LivestreamsService {
     const closedLive = await prisma.livestream.update({
       where: { id },
       data: {
-        status: 'closed',
         endedAt: new Date(),
         totalSalesAmount,
-        totalUnitsSold,
         viewerCount: viewerCount ?? livestream.viewerCount,
       },
     });
@@ -195,7 +195,7 @@ export class LivestreamsService {
         totalUnitsSold,
         averageTicket,
         durationMinutes,
-        isActive: livestream.status === 'active',
+        isActive: livestream.endedAt === null,
       },
     };
   }

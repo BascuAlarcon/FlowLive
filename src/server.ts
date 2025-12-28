@@ -1,9 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import authRoutes from './modules/auth/auth.routes';
-import organizationRoutes from './modules/organizations/organizations.routes';
-import userRoutes from './modules/users/users.routes';
 import routes from './routes';
 import { errorHandler } from './middlewares/error-handler.middleware';
 
@@ -30,12 +27,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Rutas de la API
-app.use('/api/auth', authRoutes);
-app.use('/api/organizations', organizationRoutes);
-app.use('/api/users', userRoutes);
-
-// Rutas centralizadas (productos, colores, sizes, customers, livestreams, sales, carts, metrics)
+// Todas las rutas de la API centralizadas
 app.use('/api', routes);
 
 // Middleware de manejo de errores (debe ir al final)
@@ -46,11 +38,12 @@ app.listen(PORT, () => {
   console.log(`🔐 API Auth: http://localhost:${PORT}/api/auth`);
   console.log(`📚 API Organizations: http://localhost:${PORT}/api/organizations`);
   console.log(`👥 API Users: http://localhost:${PORT}/api/users`);
-  console.log(`📦 API Products: http://localhost:${PORT}/api/products`);
-  console.log(`🎨 API Colors: http://localhost:${PORT}/api/colors`);
-  console.log(`📏 API Sizes: http://localhost:${PORT}/api/sizes`);
+  console.log(`🏷️  API Categories: http://localhost:${PORT}/api/categories`);
+  console.log(`🎨 API Attributes: http://localhost:${PORT}/api/attributes`);
+  console.log(`📦 API LiveItems: http://localhost:${PORT}/api/liveitems`);
   console.log(`👤 API Customers: http://localhost:${PORT}/api/customers`);
   console.log(`🔴 API Livestreams: http://localhost:${PORT}/api/livestreams`);
+  console.log(`💰 API Sales: http://localhost:${PORT}/api/sales`);
   console.log(`🛒 API Carts: http://localhost:${PORT}/api/carts`);
   console.log(`📊 API Metrics: http://localhost:${PORT}/api/metrics`);
 });

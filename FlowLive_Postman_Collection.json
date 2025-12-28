@@ -227,7 +227,7 @@
       ]
     },
     {
-      "name": "Products",
+      "name": "LiveItems",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -240,31 +240,71 @@
       },
       "item": [
         {
-          "name": "Get Products",
+          "name": "Get LiveItems",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/products",
+              "raw": "{{baseUrl}}/liveitems?page=1&limit=20",
               "host": ["{{baseUrl}}"],
-              "path": ["products"]
-            }
+              "path": ["liveitems"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "livestreamId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "available",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Obtiene lista de items con paginación y filtros opcionales"
           }
         },
         {
-          "name": "Get Product by ID",
+          "name": "Get LiveItems Stats",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/products/:id",
+              "raw": "{{baseUrl}}/liveitems/stats",
               "host": ["{{baseUrl}}"],
-              "path": ["products", ":id"]
-            }
+              "path": ["liveitems", "stats"]
+            },
+            "description": "Obtiene estadísticas de items (total, disponibles, reservados, vendidos)"
           }
         },
         {
-          "name": "Create Product",
+          "name": "Get LiveItem by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/liveitems/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["liveitems", ":id"]
+            },
+            "description": "Obtiene un item específico con sus atributos"
+          }
+        },
+        {
+          "name": "Create LiveItem",
           "request": {
             "method": "POST",
             "header": [
@@ -275,19 +315,20 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Polera Básica\",\n  \"description\": \"Polera de algodón 100%\",\n  \"basePrice\": 15000,\n  \"sku\": \"POL-001\",\n  \"imageUrl\": \"https://ejemplo.com/imagen.jpg\"\n}"
+              "raw": "{\n  \"categoryId\": \"category_id_aqui\",\n  \"livestreamId\": \"livestream_id_aqui\",\n  \"price\": 25000,\n  \"quantity\": 1,\n  \"imageUrl\": \"https://ejemplo.com/polera.jpg\",\n  \"notes\": \"Polera roja talla M\",\n  \"attributes\": [\n    {\n      \"attributeValueId\": \"color_rojo_id\"\n    },\n    {\n      \"attributeValueId\": \"talla_m_id\"\n    }\n  ]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/products",
+              "raw": "{{baseUrl}}/liveitems",
               "host": ["{{baseUrl}}"],
-              "path": ["products"]
-            }
+              "path": ["liveitems"]
+            },
+            "description": "Crea un nuevo item individual para el live"
           }
         },
         {
-          "name": "Update Product",
+          "name": "Update LiveItem",
           "request": {
-            "method": "PUT",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -296,41 +337,31 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Polera Premium\",\n  \"basePrice\": 18000\n}"
+              "raw": "{\n  \"price\": 23000,\n  \"notes\": \"Precio actualizado\",\n  \"status\": \"available\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/products/:id",
+              "raw": "{{baseUrl}}/liveitems/:id",
               "host": ["{{baseUrl}}"],
-              "path": ["products", ":id"]
-            }
+              "path": ["liveitems", ":id"]
+            },
+            "description": "Actualiza precio, notas o estado de un item"
           }
         },
         {
-          "name": "Delete Product",
+          "name": "Delete LiveItem",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/products/:id",
+              "raw": "{{baseUrl}}/liveitems/:id",
               "host": ["{{baseUrl}}"],
-              "path": ["products", ":id"]
-            }
+              "path": ["liveitems", ":id"]
+            },
+            "description": "Elimina un item (solo si está disponible)"
           }
         },
         {
-          "name": "Get Product Variants",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/products/:id/variants",
-              "host": ["{{baseUrl}}"],
-              "path": ["products", ":id", "variants"]
-            }
-          }
-        },
-        {
-          "name": "Create Product Variant",
+          "name": "Add Attribute to LiveItem",
           "request": {
             "method": "POST",
             "header": [
@@ -341,175 +372,27 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"colorId\": \"color_id_aqui\",\n  \"sizeId\": \"size_id_aqui\",\n  \"name\": \"Rojo - M\",\n  \"sku\": \"POL-001-ROJO-M\",\n  \"price\": 15000,\n  \"stockQuantity\": 20\n}"
+              "raw": "{\n  \"attributeValueId\": \"nuevo_valor_id\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/products/:id/variants",
+              "raw": "{{baseUrl}}/liveitems/:id/attributes",
               "host": ["{{baseUrl}}"],
-              "path": ["products", ":id", "variants"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Colors",
-      "auth": {
-        "type": "bearer",
-        "bearer": [
-          {
-            "key": "token",
-            "value": "{{authToken}}",
-            "type": "string"
-          }
-        ]
-      },
-      "item": [
-        {
-          "name": "Get Colors",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/colors",
-              "host": ["{{baseUrl}}"],
-              "path": ["colors"]
-            }
+              "path": ["liveitems", ":id", "attributes"]
+            },
+            "description": "Agrega un atributo adicional al item"
           }
         },
         {
-          "name": "Create Color",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Rojo\",\n  \"hexCode\": \"#FF0000\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/colors",
-              "host": ["{{baseUrl}}"],
-              "path": ["colors"]
-            }
-          }
-        },
-        {
-          "name": "Update Color",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Rojo Intenso\",\n  \"hexCode\": \"#CC0000\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/colors/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["colors", ":id"]
-            }
-          }
-        },
-        {
-          "name": "Delete Color",
+          "name": "Remove Attribute from LiveItem",
           "request": {
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/colors/:id",
+              "raw": "{{baseUrl}}/liveitems/:id/attributes/:attributeId",
               "host": ["{{baseUrl}}"],
-              "path": ["colors", ":id"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Sizes",
-      "auth": {
-        "type": "bearer",
-        "bearer": [
-          {
-            "key": "token",
-            "value": "{{authToken}}",
-            "type": "string"
-          }
-        ]
-      },
-      "item": [
-        {
-          "name": "Get Sizes",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/sizes",
-              "host": ["{{baseUrl}}"],
-              "path": ["sizes"]
-            }
-          }
-        },
-        {
-          "name": "Create Size",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"M\",\n  \"order\": 2\n}"
+              "path": ["liveitems", ":id", "attributes", ":attributeId"]
             },
-            "url": {
-              "raw": "{{baseUrl}}/sizes",
-              "host": ["{{baseUrl}}"],
-              "path": ["sizes"]
-            }
-          }
-        },
-        {
-          "name": "Update Size",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Mediano\",\n  \"order\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/sizes/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["sizes", ":id"]
-            }
-          }
-        },
-        {
-          "name": "Delete Size",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/sizes/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["sizes", ":id"]
-            }
+            "description": "Elimina un atributo del item"
           }
         }
       ]
@@ -831,7 +714,7 @@
       ]
     },
     {
-      "name": "Carts (Mantenedor)",
+      "name": "Carts (Carritos Persistentes)",
       "auth": {
         "type": "bearer",
         "bearer": [
@@ -853,80 +736,24 @@
               "host": ["{{baseUrl}}"],
               "path": ["carts"]
             },
-            "description": "Obtiene todos los carritos activos (reserved)"
+            "description": "Obtiene todos los carritos activos (reserved) con items pendientes de pago"
           }
         },
         {
-          "name": "Get Carts by Livestream",
+          "name": "Get Customer Cart",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/carts?livestreamId=:livestreamId",
+              "raw": "{{baseUrl}}/carts/customer/:customerId",
               "host": ["{{baseUrl}}"],
-              "path": ["carts"],
-              "query": [
-                {
-                  "key": "livestreamId",
-                  "value": ":livestreamId"
-                }
-              ]
+              "path": ["carts", "customer", ":customerId"]
             },
-            "description": "Filtra carritos por livestream"
+            "description": "Obtiene el carrito activo de un cliente específico (un cliente solo puede tener un carrito activo)"
           }
         },
         {
-          "name": "Get Carts without Livestream",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/carts?hasNoLivestream=true",
-              "host": ["{{baseUrl}}"],
-              "path": ["carts"],
-              "query": [
-                {
-                  "key": "hasNoLivestream",
-                  "value": "true"
-                }
-              ]
-            },
-            "description": "Obtiene carritos sin livestream asignado"
-          }
-        },
-        {
-          "name": "Get Old Carts",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/carts/old?daysOld=7",
-              "host": ["{{baseUrl}}"],
-              "path": ["carts", "old"],
-              "query": [
-                {
-                  "key": "daysOld",
-                  "value": "7"
-                }
-              ]
-            },
-            "description": "Obtiene carritos antiguos (no actualizados en X días)"
-          }
-        },
-        {
-          "name": "Get Cart by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/carts/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["carts", ":id"]
-            }
-          }
-        },
-        {
-          "name": "Add Item to Cart",
+          "name": "Add LiveItem to Cart",
           "request": {
             "method": "POST",
             "header": [
@@ -937,40 +764,18 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"product_id_aqui\",\n  \"productVariantId\": \"variant_id_aqui\",\n  \"quantity\": 2,\n  \"unitPrice\": 15000\n}"
+              "raw": "{\n  \"customerId\": \"customer_id_aqui\",\n  \"liveItemId\": \"liveitem_id_aqui\",\n  \"livestreamId\": \"livestream_id_aqui\",\n  \"sellerId\": \"seller_id_aqui\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/carts/:id/items",
+              "raw": "{{baseUrl}}/carts/items",
               "host": ["{{baseUrl}}"],
-              "path": ["carts", ":id", "items"]
+              "path": ["carts", "items"]
             },
-            "description": "Agrega un producto al carrito"
+            "description": "Agrega un LiveItem al carrito del cliente. Si no tiene carrito activo, se crea uno nuevo. El item queda reservado."
           }
         },
         {
-          "name": "Update Cart Item",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"quantity\": 3,\n  \"unitPrice\": 14000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/carts/:cartId/items/:itemId",
-              "host": ["{{baseUrl}}"],
-              "path": ["carts", ":cartId", "items", ":itemId"]
-            },
-            "description": "Actualiza cantidad o precio de un item"
-          }
-        },
-        {
-          "name": "Remove Cart Item",
+          "name": "Remove Item from Cart",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -979,33 +784,11 @@
               "host": ["{{baseUrl}}"],
               "path": ["carts", ":cartId", "items", ":itemId"]
             },
-            "description": "Elimina un producto del carrito"
+            "description": "Elimina un item del carrito. El item vuelve a estado available."
           }
         },
         {
-          "name": "Update Cart",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"notes\": \"Cliente pidió cambio por WhatsApp\",\n  \"discountAmount\": 5000,\n  \"livestreamId\": \"nuevo_livestream_id\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/carts/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["carts", ":id"]
-            },
-            "description": "Actualiza notas, descuento o livestream del carrito"
-          }
-        },
-        {
-          "name": "Confirm Cart",
+          "name": "Confirm Cart (Payment Received)",
           "request": {
             "method": "POST",
             "header": [
@@ -1016,14 +799,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"method\": \"transfer\",\n  \"amount\": 50000,\n  \"reference\": \"Transf-12345\"\n}"
+              "raw": "{\n  \"paymentMethod\": \"transfer\",\n  \"paymentReference\": \"Transf-12345\",\n  \"notes\": \"Transferencia recibida\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/carts/:id/confirm",
+              "raw": "{{baseUrl}}/carts/:cartId/confirm",
               "host": ["{{baseUrl}}"],
-              "path": ["carts", ":id", "confirm"]
+              "path": ["carts", ":cartId", "confirm"]
             },
-            "description": "Confirma el carrito como venta pagada"
+            "description": "Confirma el carrito como venta pagada. Todos los items pasan a estado sold. Esto es IRREVERSIBLE."
           }
         },
         {
@@ -1032,11 +815,11 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/carts/:id/cancel",
+              "raw": "{{baseUrl}}/carts/:cartId/cancel",
               "host": ["{{baseUrl}}"],
-              "path": ["carts", ":id", "cancel"]
+              "path": ["carts", ":cartId", "cancel"]
             },
-            "description": "Cancela el carrito y libera stock"
+            "description": "Cancela el carrito. Todos los items vuelven a estado available."
           }
         }
       ]
@@ -1190,12 +973,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Material\",\n  \"categoryId\": \"category_id_aqui\",\n  \"required\": false\n}"
+              "raw": "{\n  \"name\": \"Color\",\n  \"type\": \"select\",\n  \"isRequired\": true,\n  \"order\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/attributes",
+              "raw": "{{baseUrl}}/categories/:categoryId/attributes",
               "host": ["{{baseUrl}}"],
-              "path": ["attributes"]
+              "path": ["categories", ":categoryId", "attributes"]
             },
             "description": "Crea un nuevo atributo para una categoría"
           }
@@ -1260,12 +1043,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"value\": \"Algodón\",\n  \"attributeId\": \"attribute_id_aqui\"\n}"
+              "raw": "{\n  \"value\": \"Rojo\",\n  \"hexCode\": \"#FF0000\",\n  \"order\": 1\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/attributes/values",
+              "raw": "{{baseUrl}}/attributes/:attributeId/values",
               "host": ["{{baseUrl}}"],
-              "path": ["attributes", "values"]
+              "path": ["attributes", ":attributeId", "values"]
             },
             "description": "Crea un nuevo valor para un atributo"
           }

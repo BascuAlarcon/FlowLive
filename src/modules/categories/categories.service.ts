@@ -35,7 +35,7 @@ export class CategoriesService {
       include: {
         _count: {
           select: {
-            products: true,
+            liveItems: true,
             attributes: true,
           },
         },
@@ -58,7 +58,7 @@ export class CategoriesService {
         },
         _count: {
           select: {
-            products: true,
+            liveItems: true,
           },
         },
       },
@@ -99,10 +99,9 @@ export class CategoriesService {
     await this.getCategoryById(id, organizationId);
 
     // Verificar si la categoría está en uso en algún producto
-    const productsWithCategory = await prisma.product.count({
+    const productsWithCategory = await prisma.liveItem.count({
       where: {
         categoryId: id,
-        deletedAt: null,
       },
     });
 

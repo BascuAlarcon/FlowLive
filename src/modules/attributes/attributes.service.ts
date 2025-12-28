@@ -131,7 +131,7 @@ export class AttributesService {
     await this.getAttributeById(id, organizationId);
 
     // Verificar si el atributo tiene valores en uso en variantes
-    const valuesInUse = await prisma.variantAttributeValue.count({
+    const valuesInUse = await prisma.liveItemAttributeValue.count({
       where: {
         attributeValue: {
           attributeId: id,
@@ -276,7 +276,7 @@ export class AttributesService {
     await this.getValueById(id, organizationId);
 
     // Verificar si el valor está en uso en alguna variante
-    const variantsWithValue = await prisma.variantAttributeValue.count({
+    const variantsWithValue = await prisma.liveItemAttributeValue.count({
       where: {
         attributeValueId: id,
       },

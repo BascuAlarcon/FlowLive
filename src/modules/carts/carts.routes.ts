@@ -7,28 +7,19 @@ const cartsController = new CartsController();
 // GET /carts - Obtener todos los carritos activos
 router.get('/', cartsController.getActiveCarts.bind(cartsController));
 
-// GET /carts/old - Obtener carritos antiguos (debe ir antes de /:id)
-router.get('/old', cartsController.getOldCarts.bind(cartsController));
+// GET /carts/customer/:customerId - Obtener carrito de un cliente
+router.get('/customer/:customerId', cartsController.getCustomerCart.bind(cartsController));
 
-// GET /carts/:id - Obtener un carrito específico
-router.get('/:id', cartsController.getCartById.bind(cartsController));
+// POST /carts/items - Agregar item al carrito del cliente
+router.post('/items', cartsController.addItemToCart.bind(cartsController));
 
-// POST /carts/:id/items - Agregar item al carrito
-router.post('/:id/items', cartsController.addItemToCart.bind(cartsController));
+// DELETE /carts/:cartId/items/:itemId - Eliminar item del carrito
+router.delete('/:cartId/items/:itemId', cartsController.removeItemFromCart.bind(cartsController));
 
-// PATCH /carts/:id/items/:itemId - Actualizar item del carrito
-router.patch('/:id/items/:itemId', cartsController.updateCartItem.bind(cartsController));
+// POST /carts/:cartId/confirm - Confirmar carrito (cerrar venta)
+router.post('/:cartId/confirm', cartsController.confirmCart.bind(cartsController));
 
-// DELETE /carts/:id/items/:itemId - Eliminar item del carrito
-router.delete('/:id/items/:itemId', cartsController.removeCartItem.bind(cartsController));
-
-// PATCH /carts/:id - Actualizar carrito (notas, descuento, livestream)
-router.patch('/:id', cartsController.updateCart.bind(cartsController));
-
-// POST /carts/:id/confirm - Confirmar carrito (convertir en venta confirmada)
-router.post('/:id/confirm', cartsController.confirmCart.bind(cartsController));
-
-// POST /carts/:id/cancel - Cancelar carrito
-router.post('/:id/cancel', cartsController.cancelCart.bind(cartsController));
+// POST /carts/:cartId/cancel - Cancelar carrito (liberar items)
+router.post('/:cartId/cancel', cartsController.cancelCart.bind(cartsController));
 
 export default router;

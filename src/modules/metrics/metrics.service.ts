@@ -27,12 +27,10 @@ export class MetricsService {
         },
       }),
 
-      // Total de productos activos
-      prisma.product.count({
+      // Total de items en vivo
+      prisma.liveItem.count({
         where: {
           organizationId,
-          isActive: true,
-          deletedAt: null,
         },
       }),
 
@@ -48,7 +46,7 @@ export class MetricsService {
       prisma.livestream.findFirst({
         where: {
           organizationId,
-          status: 'active',
+          endedAt: null,
         },
       }),
     ]);
@@ -240,7 +238,7 @@ export class MetricsService {
     const livestreams = await prisma.livestream.findMany({
       where: {
         organizationId,
-        status: 'closed',
+        endedAt: { not: null },
       },
       orderBy: {
         totalSalesAmount: 'desc',
@@ -253,7 +251,6 @@ export class MetricsService {
         startedAt: true,
         endedAt: true,
         totalSalesAmount: true,
-        totalUnitsSold: true,
         viewerCount: true,
       },
     });

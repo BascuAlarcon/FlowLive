@@ -13,6 +13,9 @@ router.get('/:id', categoriesController.getCategoryById.bind(categoriesControlle
 // GET /api/categories/:categoryId/attributes - Obtener atributos de una categoría
 router.get('/:categoryId/attributes', attributesController.getAttributesByCategory.bind(attributesController));
 
+// POST /api/categories/:categoryId/attributes - Crear un atributo para una categoría
+router.post('/:categoryId/attributes', attributesController.createAttribute.bind(attributesController));
+
 // POST /api/categories - Crear una categoría
 router.post('/', categoriesController.createCategory.bind(categoriesController));
 

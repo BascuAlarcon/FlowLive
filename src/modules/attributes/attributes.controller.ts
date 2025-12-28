@@ -48,10 +48,14 @@ export class AttributesController {
     }
   }
 
-  // POST /api/attributes
+  // POST /api/categories/:categoryId/attributes o POST /api/attributes
   async createAttribute(req: CustomRequest, res: Response, next: NextFunction) {
     try {
-      const data = createAttributeSchema.parse(req.body);
+      // Tomar categoryId de params o body
+      const categoryId = req.params.categoryId || req.body.categoryId;
+      const bodyData = { ...req.body, categoryId };
+      
+      const data = createAttributeSchema.parse(bodyData);
       const organizationId = req.organizationId || '';
       const attribute = await attributesService.createAttribute(data, organizationId);
       res.status(201).json({
@@ -129,10 +133,14 @@ export class AttributesController {
     }
   }
 
-  // POST /api/attributes/values
+  // POST /api/attributes/values o POST /api/attributes/:attributeId/values
   async createValue(req: CustomRequest, res: Response, next: NextFunction) {
     try {
-      const data = createValueSchema.parse(req.body);
+      // Tomar attributeId de params o body
+      const attributeId = req.params.attributeId || req.body.attributeId;
+      const bodyData = { ...req.body, attributeId };
+      
+      const data = createValueSchema.parse(bodyData);
       const organizationId = req.organizationId || '';
       const value = await attributesService.createValue(data, organizationId);
       res.status(201).json({

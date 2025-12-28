@@ -3,17 +3,108 @@ import { Prisma } from '@prisma/client';
 
 export class CartsService {
   /**
-   * Obtiene todos los carritos activos (reserved) de la organización
+   * Obtiene o crea el carrito activo de un cliente
+   * Un cliente solo puede tener un carrito activo (reserved) a la vez
+   */
+  async getOrCreateCart(
+    customerId: string,
+    organizationId: string,
+    sellerId: string,
+    livestreamId?: string
+  ) {
+    // Buscar carrito activo del cliente
+    let cart = await prisma.sale.findFirst({
+      where: {
+        customerId,
+        organizationId,
+        status: 'reserved',
+      },
+      include: {
+        SaleItem: {
+          include: {
+            LiveItem: {
+              include: {
+                category: true,
+                attributes: {
+                  include: {
+                    attributeValue: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        Customer: true,
+      },
+    });
+
+    // Si no existe, crear uno nuevo
+    if (!cart) {
+      cart = await prisma.sale.create({
+        data: {
+          customerId,
+          organizationId,
+          sellerId,
+          livestreamId,
+          status: 'reserved',
+          totalAmount: 0,
+          lastLivestreamId: livestreamId,
+        },
+        include: {
+          SaleItem: {
+            include: {
+              LiveItem: {
+                include: {
+                  category: true,
+                  attributes: {
+                    include: {
+                      attributeValue: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          Customer: true,
+        },
+      });
+    } else if (livestreamId && cart.lastLivestreamId !== livestreamId) {
+      // Actualizar el último livestream si cambió
+      cart = await prisma.sale.update({
+        where: { id: cart.id },
+        data: { lastLivestreamId: livestreamId },
+        include: {
+          SaleItem: {
+            include: {
+              LiveItem: {
+                include: {
+                  category: true,
+                  attributes: {
+                    include: {
+                      attributeValue: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          Customer: true,
+        },
+      });
+    }
+
+    return cart;
+  }
+
+  /**
+   * Obtiene todos los carritos activos de la organización
    */
   async getActiveCarts(
     organizationId: string,
     filters?: {
       customerId?: string;
       livestreamId?: string;
-      hasNoLivestream?: boolean;
       sellerId?: string;
-      updatedAfter?: Date;
-      updatedBefore?: Date;
     }
   ) {
     const where: Prisma.SaleWhereInput = {
@@ -26,25 +117,11 @@ export class CartsService {
     }
 
     if (filters?.livestreamId) {
-      where.livestreamId = filters.livestreamId;
-    }
-
-    if (filters?.hasNoLivestream) {
-      where.livestreamId = null;
+      where.lastLivestreamId = filters.livestreamId;
     }
 
     if (filters?.sellerId) {
       where.sellerId = filters.sellerId;
-    }
-
-    if (filters?.updatedAfter || filters?.updatedBefore) {
-      where.updatedAt = {};
-      if (filters.updatedAfter) {
-        where.updatedAt.gte = filters.updatedAfter;
-      }
-      if (filters.updatedBefore) {
-        where.updatedAt.lte = filters.updatedBefore;
-      }
     }
 
     return prisma.sale.findMany({
@@ -52,11 +129,14 @@ export class CartsService {
       include: {
         SaleItem: {
           include: {
-            ProductVariant: {
+            LiveItem: {
               include: {
-                Product: true,
-                color: true,
-                size: true,
+                category: true,
+                attributes: {
+                  include: {
+                    attributeValue: true,
+                  },
+                },
               },
             },
           },
@@ -70,111 +150,82 @@ export class CartsService {
   }
 
   /**
-   * Obtiene un carrito específico por ID
-   */
-  async getCartById(id: string, organizationId: string) {
-    return prisma.sale.findFirst({
-      where: {
-        id,
-        organizationId,
-        status: 'reserved',
-      },
-      include: {
-        SaleItem: {
-          include: {
-            ProductVariant: {
-              include: {
-                Product: true,
-                color: true,
-                size: true,
-              },
-            },
-          },
-        },
-        Customer: true,
-      },
-    });
-  }
-
-  /**
-   * Agrega un producto al carrito
+   * Agrega un LiveItem al carrito del cliente
    */
   async addItemToCart(
-    cartId: string,
+    customerId: string,
     organizationId: string,
-    itemData: {
-      productId: string;
-      productVariantId: string;
-      quantity: number;
-      unitPrice: number;
-    }
+    sellerId: string,
+    liveItemId: string,
+    quantity: number,
+    livestreamId?: string
   ) {
-    // Verificar que el carrito existe y está en estado reserved
-    const cart = await prisma.sale.findFirst({
+    // Verificar que el LiveItem existe y está disponible
+    const liveItem = await prisma.liveItem.findFirst({
       where: {
-        id: cartId,
+        id: liveItemId,
         organizationId,
-        status: 'reserved',
-      },
-      include: {
-        SaleItem: true,
+        status: 'available',
       },
     });
 
-    if (!cart) {
-      throw new Error('Carrito no encontrado o ya está cerrado');
+    if (!liveItem) {
+      throw new Error('Item no encontrado o no disponible');
     }
 
-    // Verificar stock disponible
-    const variant = await prisma.productVariant.findFirst({
-      where: {
-        id: itemData.productVariantId,
-        organizationId,
-      },
-    });
-
-    if (!variant) {
-      throw new Error('Variante de producto no encontrada');
+    // Verificar que la cantidad solicitada no excede la disponible
+    if (quantity > liveItem.quantity) {
+      throw new Error(`Solo hay ${liveItem.quantity} unidades disponibles`);
     }
 
-    // Usar transacción para agregar el item y actualizar stock
+    // Obtener o crear el carrito
+    const cart = await this.getOrCreateCart(customerId, organizationId, sellerId, livestreamId);
+
+    // Usar transacción para agregar el item y actualizar el LiveItem
     return prisma.$transaction(async (tx) => {
-      // Crear el sale item
-      const totalPrice = itemData.quantity * itemData.unitPrice;
-      const saleItem = await tx.saleItem.create({
+      // Marcar el LiveItem como reservado
+      await tx.liveItem.update({
+        where: { id: liveItemId },
         data: {
-          saleId: cartId,
-          productId: itemData.productId,
-          productVariantId: itemData.productVariantId,
-          quantity: itemData.quantity,
-          unitPrice: itemData.unitPrice,
-          totalPrice,
+          status: 'reserved',
+          quantity: liveItem.quantity - quantity,
         },
       });
 
-      // Crear movimiento de stock (reserva)
-      await tx.stockMovement.create({
+      // Crear el sale item
+      const totalPrice = quantity * Number(liveItem.price);
+      const saleItem = await tx.saleItem.create({
         data: {
-          productVariantId: itemData.productVariantId,
-          organizationId,
-          type: 'reserve',
-          quantity: -itemData.quantity,
-          referenceType: 'sale',
-          referenceId: cartId,
-          notes: `Reserva para carrito ${cartId}`,
+          saleId: cart.id,
+          liveItemId,
+          quantity,
+          unitPrice: liveItem.price,
+          totalPrice,
+        },
+        include: {
+          LiveItem: {
+            include: {
+              category: true,
+              attributes: {
+                include: {
+                  attributeValue: true,
+                },
+              },
+            },
+          },
         },
       });
 
       // Recalcular el total del carrito
       const allItems = await tx.saleItem.findMany({
-        where: { saleId: cartId },
+        where: { saleId: cart.id },
       });
 
       const newTotal = allItems.reduce((sum, item) => sum + Number(item.totalPrice), 0);
 
       // Actualizar el carrito
       await tx.sale.update({
-        where: { id: cartId },
+        where: { id: cart.id },
         data: {
           totalAmount: newTotal,
           updatedAt: new Date(),
@@ -186,98 +237,14 @@ export class CartsService {
   }
 
   /**
-   * Actualiza un item del carrito
-   */
-  async updateCartItem(
-    cartId: string,
-    itemId: string,
-    organizationId: string,
-    updateData: {
-      quantity?: number;
-      unitPrice?: number;
-    }
-  ) {
-    // Verificar que el carrito existe y está en estado reserved
-    const cart = await prisma.sale.findFirst({
-      where: {
-        id: cartId,
-        organizationId,
-        status: 'reserved',
-      },
-    });
-
-    if (!cart) {
-      throw new Error('Carrito no encontrado o ya está cerrado');
-    }
-
-    // Obtener el item actual
-    const currentItem = await prisma.saleItem.findFirst({
-      where: {
-        id: itemId,
-        saleId: cartId,
-      },
-    });
-
-    if (!currentItem) {
-      throw new Error('Item no encontrado en el carrito');
-    }
-
-    return prisma.$transaction(async (tx) => {
-      const newQuantity = updateData.quantity ?? currentItem.quantity;
-      const newUnitPrice = updateData.unitPrice ?? Number(currentItem.unitPrice);
-      const newTotalPrice = newQuantity * newUnitPrice;
-
-      // Si cambió la cantidad, ajustar el stock
-      if (updateData.quantity && updateData.quantity !== currentItem.quantity) {
-        const quantityDiff = updateData.quantity - currentItem.quantity;
-
-        await tx.stockMovement.create({
-          data: {
-            productVariantId: currentItem.productVariantId,
-            organizationId,
-            type: quantityDiff > 0 ? 'reserve' : 'cancel',
-            quantity: -quantityDiff, // negativo para reserve, positivo para cancel
-            referenceType: 'sale',
-            referenceId: cartId,
-            notes: `Ajuste de cantidad en carrito ${cartId}`,
-          },
-        });
-      }
-
-      // Actualizar el item
-      const updatedItem = await tx.saleItem.update({
-        where: { id: itemId },
-        data: {
-          quantity: newQuantity,
-          unitPrice: newUnitPrice,
-          totalPrice: newTotalPrice,
-        },
-      });
-
-      // Recalcular el total del carrito
-      const allItems = await tx.saleItem.findMany({
-        where: { saleId: cartId },
-      });
-
-      const newTotal = allItems.reduce((sum, item) => sum + Number(item.totalPrice), 0);
-
-      await tx.sale.update({
-        where: { id: cartId },
-        data: {
-          totalAmount: newTotal,
-          updatedAt: new Date(),
-        },
-      });
-
-      return updatedItem;
-    });
-  }
-
-  /**
    * Elimina un item del carrito
    */
-  async removeCartItem(cartId: string, itemId: string, organizationId: string) {
-    // Verificar que el carrito existe y está en estado reserved
+  async removeItemFromCart(
+    cartId: string,
+    itemId: string,
+    organizationId: string
+  ) {
+    // Verificar que el carrito existe
     const cart = await prisma.sale.findFirst({
       where: {
         id: cartId,
@@ -290,33 +257,33 @@ export class CartsService {
       throw new Error('Carrito no encontrado o ya está cerrado');
     }
 
-    // Obtener el item
-    const item = await prisma.saleItem.findFirst({
+    // Buscar el item
+    const saleItem = await prisma.saleItem.findFirst({
       where: {
         id: itemId,
         saleId: cartId,
       },
+      include: {
+        LiveItem: true,
+      },
     });
 
-    if (!item) {
+    if (!saleItem) {
       throw new Error('Item no encontrado en el carrito');
     }
 
+    // Usar transacción para eliminar el item y liberar el LiveItem
     return prisma.$transaction(async (tx) => {
-      // Liberar el stock reservado
-      await tx.stockMovement.create({
+      // Liberar el LiveItem (devolver al estado available)
+      await tx.liveItem.update({
+        where: { id: saleItem.liveItemId },
         data: {
-          productVariantId: item.productVariantId,
-          organizationId,
-          type: 'cancel',
-          quantity: item.quantity,
-          referenceType: 'sale',
-          referenceId: cartId,
-          notes: `Item eliminado del carrito ${cartId}`,
+          status: 'available',
+          quantity: saleItem.LiveItem.quantity + saleItem.quantity,
         },
       });
 
-      // Eliminar el item
+      // Eliminar el sale item
       await tx.saleItem.delete({
         where: { id: itemId },
       });
@@ -328,6 +295,7 @@ export class CartsService {
 
       const newTotal = remainingItems.reduce((sum, item) => sum + Number(item.totalPrice), 0);
 
+      // Actualizar el carrito
       await tx.sale.update({
         where: { id: cartId },
         data: {
@@ -336,69 +304,14 @@ export class CartsService {
         },
       });
 
-      return { success: true, remainingItems: remainingItems.length };
+      return { success: true };
     });
   }
 
   /**
-   * Actualiza el carrito (notas, descuento, livestream)
+   * Confirma el carrito (cierra la venta)
    */
-  async updateCart(
-    cartId: string,
-    organizationId: string,
-    updateData: {
-      notes?: string;
-      discountAmount?: number;
-      livestreamId?: string;
-    }
-  ) {
-    const cart = await prisma.sale.findFirst({
-      where: {
-        id: cartId,
-        organizationId,
-        status: 'reserved',
-      },
-    });
-
-    if (!cart) {
-      throw new Error('Carrito no encontrado o ya está cerrado');
-    }
-
-    const data: any = {
-      updatedAt: new Date(),
-    };
-
-    if (updateData.notes !== undefined) {
-      data.notes = updateData.notes;
-    }
-
-    if (updateData.discountAmount !== undefined) {
-      data.discountAmount = updateData.discountAmount;
-    }
-
-    if (updateData.livestreamId) {
-      data.livestreamId = updateData.livestreamId;
-      data.lastLivestreamId = updateData.livestreamId;
-    }
-
-    return prisma.sale.update({
-      where: { id: cartId },
-      data,
-    });
-  }
-
-  /**
-   * Confirma un carrito (lo convierte en venta confirmada)
-   */
-  async confirmCart(
-    cartId: string,
-    organizationId: string,
-    paymentData: {
-      method: string;
-      amount: number;
-      reference?: string;
-    }
-  ) {
+  async confirmCart(cartId: string, organizationId: string) {
     const cart = await prisma.sale.findFirst({
       where: {
         id: cartId,
@@ -406,7 +319,11 @@ export class CartsService {
         status: 'reserved',
       },
       include: {
-        SaleItem: true,
+        SaleItem: {
+          include: {
+            LiveItem: true,
+          },
+        },
       },
     });
 
@@ -414,61 +331,52 @@ export class CartsService {
       throw new Error('Carrito no encontrado o ya está cerrado');
     }
 
+    if (cart.SaleItem.length === 0) {
+      throw new Error('El carrito está vacío');
+    }
+
     return prisma.$transaction(async (tx) => {
-      // Crear el pago
-      await tx.payment.create({
-        data: {
-          saleId: cartId,
-          method: paymentData.method as any,
-          amount: paymentData.amount,
-          status: 'paid',
-          reference: paymentData.reference,
-          paidAt: new Date(),
-        },
-      });
-
-      // Crear movimientos de stock para confirmar la venta
+      // Marcar todos los LiveItems como vendidos
       for (const item of cart.SaleItem) {
-        // Movimiento de venta (confirma)
-        await tx.stockMovement.create({
-          data: {
-            productVariantId: item.productVariantId,
-            organizationId,
-            type: 'sale',
-            quantity: -item.quantity,
-            referenceType: 'sale',
-            referenceId: cartId,
-            notes: `Venta confirmada ${cartId}`,
-          },
-        });
-
-        // Liberar la reserva
-        await tx.stockMovement.create({
-          data: {
-            productVariantId: item.productVariantId,
-            organizationId,
-            type: 'cancel',
-            quantity: item.quantity,
-            referenceType: 'sale',
-            referenceId: cartId,
-            notes: `Liberar reserva al confirmar ${cartId}`,
-          },
+        await tx.liveItem.update({
+          where: { id: item.liveItemId },
+          data: { status: 'sold' },
         });
       }
 
-      // Actualizar el carrito a confirmado
-      return tx.sale.update({
+      // Actualizar el estado de la venta
+      const updatedCart = await tx.sale.update({
         where: { id: cartId },
         data: {
           status: 'confirmed',
           updatedAt: new Date(),
         },
+        include: {
+          SaleItem: {
+            include: {
+              LiveItem: {
+                include: {
+                  category: true,
+                  attributes: {
+                    include: {
+                      attributeValue: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          Customer: true,
+          Payment: true,
+        },
       });
+
+      return updatedCart;
     });
   }
 
   /**
-   * Cancela un carrito
+   * Cancela el carrito (libera todos los items)
    */
   async cancelCart(cartId: string, organizationId: string) {
     const cart = await prisma.sale.findFirst({
@@ -478,8 +386,11 @@ export class CartsService {
         status: 'reserved',
       },
       include: {
-        SaleItem: true,
-        Payment: true,
+        SaleItem: {
+          include: {
+            LiveItem: true,
+          },
+        },
       },
     });
 
@@ -487,61 +398,66 @@ export class CartsService {
       throw new Error('Carrito no encontrado o ya está cerrado');
     }
 
-    // Verificar que no tenga pagos confirmados
-    const hasPaidPayments = cart.Payment.some((p) => p.status === 'paid');
-    if (hasPaidPayments) {
-      throw new Error('No se puede cancelar un carrito con pagos confirmados');
-    }
-
     return prisma.$transaction(async (tx) => {
-      // Liberar todo el stock reservado
+      // Liberar todos los LiveItems
       for (const item of cart.SaleItem) {
-        await tx.stockMovement.create({
+        await tx.liveItem.update({
+          where: { id: item.liveItemId },
           data: {
-            productVariantId: item.productVariantId,
-            organizationId,
-            type: 'cancel',
-            quantity: item.quantity,
-            referenceType: 'sale',
-            referenceId: cartId,
-            notes: `Carrito cancelado ${cartId}`,
+            status: 'available',
+            quantity: item.LiveItem.quantity + item.quantity,
           },
         });
       }
 
-      // Actualizar el carrito a cancelado
-      return tx.sale.update({
+      // Eliminar todos los items del carrito
+      await tx.saleItem.deleteMany({
+        where: { saleId: cartId },
+      });
+
+      // Actualizar el estado de la venta a cancelado
+      const updatedCart = await tx.sale.update({
         where: { id: cartId },
         data: {
           status: 'cancelled',
+          totalAmount: 0,
           updatedAt: new Date(),
         },
       });
+
+      return updatedCart;
     });
   }
 
   /**
-   * Obtiene carritos antiguos (no actualizados en X días)
+   * Obtiene el carrito de un cliente específico
    */
-  async getOldCarts(organizationId: string, daysOld: number = 7) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-
-    return prisma.sale.findMany({
+  async getCustomerCart(customerId: string, organizationId: string) {
+    return prisma.sale.findFirst({
       where: {
+        customerId,
         organizationId,
         status: 'reserved',
-        updatedAt: {
-          lt: cutoffDate,
-        },
       },
       include: {
+        SaleItem: {
+          include: {
+            LiveItem: {
+              include: {
+                category: true,
+                attributes: {
+                  include: {
+                    attributeValue: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         Customer: true,
-        SaleItem: true,
-      },
-      orderBy: {
-        updatedAt: 'asc',
       },
     });
   }
 }
+
+export default new CartsService();
