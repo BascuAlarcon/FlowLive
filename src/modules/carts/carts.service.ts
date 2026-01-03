@@ -149,9 +149,6 @@ export class CartsService {
     });
   }
 
-  /**
-   * Agrega un LiveItem al carrito del cliente
-   */
   async addItemToCart(
     customerId: string,
     organizationId: string,
@@ -167,6 +164,18 @@ export class CartsService {
         organizationId,
         status: 'available',
       },
+      include: {
+        attributes: {
+          include: {
+            attributeValue: {
+              include: {
+                attribute: true,
+              },
+            },
+          },
+        },
+        category: true,
+      },
     });
 
     if (!liveItem) {
@@ -177,6 +186,14 @@ export class CartsService {
     if (quantity > liveItem.quantity) {
       throw new Error(`Solo hay ${liveItem.quantity} unidades disponibles`);
     }
+
+    // Crear snapshot de atributos para histórico
+    const attributesSnapshot = liveItem.attributes.map(attr => ({
+      name: attr.attributeValue?.attribute?.name || '',
+      value: attr.attributeValue?.value || attr.textValue || attr.numberValue?.toString() || '',
+      type: attr.attributeValue?.attribute?.type || 'text',
+      hexCode: attr.attributeValue?.hexCode,
+    }));
 
     // Obtener o crear el carrito
     const cart = await this.getOrCreateCart(customerId, organizationId, sellerId, livestreamId);
@@ -192,15 +209,17 @@ export class CartsService {
         },
       });
 
-      // Crear el sale item
+      // Crear el sale item con livestreamId y attributesSnapshot
       const totalPrice = quantity * Number(liveItem.price);
       const saleItem = await tx.saleItem.create({
         data: {
           saleId: cart.id,
           liveItemId,
+          livestreamId: livestreamId || liveItem.livestreamId,
           quantity,
           unitPrice: liveItem.price,
           totalPrice,
+          attributesSnapshot: attributesSnapshot,
         },
         include: {
           LiveItem: {

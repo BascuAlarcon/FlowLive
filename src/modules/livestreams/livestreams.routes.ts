@@ -15,6 +15,9 @@ router.get('/:id', livestreamsController.getLivestreamById.bind(livestreamsContr
 // GET /api/livestreams/:id/stats - Obtener estadísticas del livestream
 router.get('/:id/stats', livestreamsController.getLivestreamStats.bind(livestreamsController));
 
+// GET /api/livestreams/:id/detailed-stats - Obtener estadísticas detalladas del livestream
+router.get('/:id/detailed-stats', livestreamsController.getDetailedStats.bind(livestreamsController));
+
 // POST /api/livestreams - Crear/Iniciar un livestream
 router.post('/', livestreamsController.createLivestream.bind(livestreamsController));
 

@@ -22,6 +22,7 @@ export class AttributesController {
   async getAttributesByCategory(req: CustomRequest, res: Response, next: NextFunction) {
     try {
       const { categoryId } = categoryIdSchema.parse(req.params);
+      console.log('Received request to get attributes for categoryId:', categoryId);
       const organizationId = req.organizationId || '';
       const attributes = await attributesService.getAttributesByCategory(categoryId, organizationId);
       res.json({

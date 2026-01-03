@@ -24,6 +24,8 @@ export class LivestreamsController {
         status,
         platform
       );
+
+      console.log('Fetched Livestreams:', livestreams);
       res.json({
         success: true,
         data: livestreams,
@@ -68,6 +70,21 @@ export class LivestreamsController {
       const { id } = livestreamIdSchema.parse(req.params);
       const organizationId = req.organizationId || '';
       const stats = await livestreamsService.getLivestreamStats(id, organizationId);
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/livestreams/:id/detailed-stats
+  async getDetailedStats(req: CustomRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = livestreamIdSchema.parse(req.params);
+      const organizationId = req.organizationId || '';
+      const stats = await livestreamsService.getDetailedStats(id, organizationId);
       res.json({
         success: true,
         data: stats,

@@ -40,6 +40,8 @@ export class AttributesService {
   }
 
   async getAttributesByCategory(categoryId: string, organizationId: string) {
+
+    console.log('Fetching attributes for category:', categoryId, 'and organization:', organizationId);
     // Verificar que la categoría existe y pertenece a la organización
     const category = await prisma.productCategory.findFirst({
       where: {

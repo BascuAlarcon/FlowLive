@@ -171,6 +171,7 @@ model Livestream {
   updatedAt        DateTime @updatedAt
 
   LiveItem         LiveItem[]
+  SaleItem         SaleItem[]
 
   @@index([organizationId, startedAt])
   @@index([createdBy])
@@ -204,19 +205,23 @@ model Sale {
 }
 
 model SaleItem {
-  id          String   @id @default(cuid())
-  saleId      String
-  liveItemId  String
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  saleId             String
+  liveItemId         String
+  livestreamId       String?
+  quantity           Int
+  unitPrice          Decimal  @db.Decimal(10, 2)
+  totalPrice         Decimal  @db.Decimal(10, 2)
+  attributesSnapshot Json?
+  createdAt          DateTime @default(now())
 
-  Sale     Sale     @relation(fields: [saleId], references: [id])
-  LiveItem LiveItem @relation(fields: [liveItemId], references: [id])
+  Sale       Sale        @relation(fields: [saleId], references: [id])
+  LiveItem   LiveItem    @relation(fields: [liveItemId], references: [id])
+  Livestream Livestream? @relation(fields: [livestreamId], references: [id])
 
   @@index([saleId])
   @@index([liveItemId])
+  @@index([livestreamId])
 }
 
 model Payment {
